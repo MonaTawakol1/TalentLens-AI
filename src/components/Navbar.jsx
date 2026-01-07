@@ -99,7 +99,7 @@ const Navbar = () => {
                 </Link>
 
                 {/* Desktop Links */}
-                <div style={{ ...styles.linksDesktop, '@media (max-width: 768px)': { display: 'none' } }} className="desktop-nav">
+                <div style={styles.linksDesktop} className="desktop-nav">
                     {navLinks.map(link => (
                         <Link
                             key={link.name}

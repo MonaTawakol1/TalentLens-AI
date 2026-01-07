@@ -9,12 +9,20 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Check for saved user in localStorage (simulating persistence)
-        const savedUser = localStorage.getItem('talentlens_user');
-        if (savedUser) {
-            setUser(JSON.parse(savedUser));
-        }
-        setLoading(false);
+        const initAuth = () => {
+            // Check for saved user in sessionStorage (more secure than localStorage for this context)
+            const savedUser = sessionStorage.getItem('talentlens_user');
+            if (savedUser) {
+                try {
+                    setUser(JSON.parse(savedUser));
+                } catch (error) {
+                    console.error("Failed to parse user data:", error);
+                    sessionStorage.removeItem('talentlens_user');
+                }
+            }
+            setLoading(false);
+        };
+        initAuth();
     }, []);
 
     const login = (email, password) => {
@@ -29,7 +37,7 @@ export const AuthProvider = ({ children }) => {
                         avatar: "A"
                     };
                     setUser(mockUser);
-                    localStorage.setItem('talentlens_user', JSON.stringify(mockUser));
+                    sessionStorage.setItem('talentlens_user', JSON.stringify(mockUser));
                     resolve(mockUser);
                 } else {
                     reject("Invalid credentials");
@@ -49,7 +57,7 @@ export const AuthProvider = ({ children }) => {
                     avatar: name.charAt(0).toUpperCase()
                 };
                 setUser(newUser);
-                localStorage.setItem('talentlens_user', JSON.stringify(newUser));
+                sessionStorage.setItem('talentlens_user', JSON.stringify(newUser));
                 resolve(newUser);
             }, 800);
         });
@@ -57,13 +65,13 @@ export const AuthProvider = ({ children }) => {
 
     const logout = () => {
         setUser(null);
-        localStorage.removeItem('talentlens_user');
+        sessionStorage.removeItem('talentlens_user');
     };
 
     const updateUser = (updates) => {
         const updatedUser = { ...user, ...updates };
         setUser(updatedUser);
-        localStorage.setItem('talentlens_user', JSON.stringify(updatedUser));
+        sessionStorage.setItem('talentlens_user', JSON.stringify(updatedUser));
     };
 
     const value = {

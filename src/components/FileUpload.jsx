@@ -19,12 +19,44 @@ const FileUpload = ({ onFileSelect, acceptedTypes = ['.pdf', '.docx'] }) => {
     };
 
     const validateFile = (selectedFile) => {
-        // Simple extension check
-        const extension = '.' + selectedFile.name.split('.').pop().toLowerCase();
-        if (!acceptedTypes.includes(extension)) {
-            setError(`Invalid file type. Please upload ${acceptedTypes.join(' or ')}`);
+        const MAX_SIZE_MB = 5;
+        const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
+        const ALLOWED_MIME_TYPES = [
+            'application/pdf',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/msword' // Old doc support if needed
+        ];
+
+        // 1. Check File Size
+        if (selectedFile.size > MAX_SIZE_BYTES) {
+            setError(`File size exceeds declared limit of ${MAX_SIZE_MB}MB.`);
             return false;
         }
+
+        // 2. Check MIME Type
+        if (!ALLOWED_MIME_TYPES.includes(selectedFile.type)) {
+            // Fallback for some systems that might not populate type correctly or for extensions
+            const extension = '.' + selectedFile.name.split('.').pop().toLowerCase();
+            if (!acceptedTypes.includes(extension)) {
+                setError(`Invalid file type. Please upload ${acceptedTypes.join(' or ')}`);
+                return false;
+            }
+            // If MIME is empty but extension is valid, we might warn or proceed with caution. 
+            // For high security, we'd rely solely on MIME + server-side validation.
+            // For now, if type is present and invalid, we block.
+            if (selectedFile.type && !ALLOWED_MIME_TYPES.includes(selectedFile.type)) {
+                setError(`Invalid file format selected: ${selectedFile.type}`);
+                return false;
+            }
+        }
+
+        // 3. Extension Check
+        const extension = '.' + selectedFile.name.split('.').pop().toLowerCase();
+        if (!acceptedTypes.includes(extension)) {
+            setError(`Invalid file extension. Please upload ${acceptedTypes.join(' or ')}`);
+            return false;
+        }
+
         setError(null);
         return true;
     };
