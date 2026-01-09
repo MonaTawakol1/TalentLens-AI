@@ -87,6 +87,41 @@ export class AuthService {
         return bcrypt.hash(data, 10);
     }
 
+    async updateProfile(userId: string, dto: { fullName?: string; email?: string; title?: string; location?: string }) {
+        // If email is being updated, check uniqueness
+        if (dto.email) {
+            const existing = await this.prisma.user.findUnique({
+                where: { email: dto.email },
+            });
+            if (existing && existing.id !== userId) {
+                throw new BadRequestException('Email already in use');
+            }
+        }
+
+        const user = await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                fullName: dto.fullName,
+                email: dto.email,
+                title: dto.title,
+                location: dto.location,
+            },
+        });
+
+        return user;
+    }
+
+    async getUserProfile(userId: string) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+        });
+        if (!user) throw new ForbiddenException('User not found');
+
+        // Remove sensitive data
+        const { password, refreshToken, ...result } = user;
+        return result;
+    }
+
     async getTokens(userId: string, email: string): Promise<Tokens> {
         const [at, rt] = await Promise.all([
             this.jwtService.signAsync(

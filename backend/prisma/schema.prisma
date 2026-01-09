@@ -11,10 +11,27 @@ model User {
   id           String   @id @default(uuid())
   email        String   @unique
   fullName     String
+  title        String?
+  location     String?
   password     String
   refreshToken String?
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  updatedAt    DateTime   @updatedAt
+  analyses     Analysis[]
 
   @@map("users")
+}
+
+model Analysis {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  fileName       String?
+  resumeText     String   @db.Text
+  jobDescription String?  @db.Text
+  score          Int
+  feedback       Json     // Stores detailed breakdown, improvements, etc.
+  createdAt      DateTime @default(now())
+
+  @@map("analyses")
 }

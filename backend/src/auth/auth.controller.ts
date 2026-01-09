@@ -62,8 +62,15 @@ export class AuthController {
     @UseGuards(AtGuard)
     @Get('me')
     @HttpCode(HttpStatus.OK)
-    getMe(@GetCurrentUser() user: any) {
-        return user;
+    async getMe(@GetCurrentUserId() userId: string) {
+        return this.authService.getUserProfile(userId);
+    }
+
+    @UseGuards(AtGuard)
+    @Post('profile') // Using Post or Patch
+    @HttpCode(HttpStatus.OK)
+    async updateProfile(@GetCurrentUserId() userId: string, @Body() dto: { fullName?: string; email?: string; title?: string; location?: string }) {
+        return this.authService.updateProfile(userId, dto);
     }
 
     private setCookie(res: Response, token: string) {

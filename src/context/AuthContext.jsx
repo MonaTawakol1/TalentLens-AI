@@ -1,23 +1,48 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '../config/api';
 
 const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
+
+const API_URL = API_ENDPOINTS.auth;
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const initAuth = () => {
-            // Check for saved user in sessionStorage (more secure than localStorage for this context)
-            const savedUser = sessionStorage.getItem('talentlens_user');
-            if (savedUser) {
+        const initAuth = async () => {
+            const token = sessionStorage.getItem('access_token');
+            if (token) {
                 try {
-                    setUser(JSON.parse(savedUser));
+                    // Verify token and get user details
+                    const response = await fetch(`${API_URL}/me`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        const userData = await response.json();
+                        // Add derived properties for UI compatibility
+                        const uiUser = {
+                            ...userData,
+                            name: userData.fullName,
+                            title: userData.title || "Aspiring Professional",
+                            location: userData.location || "Unknown",
+                            plan: "Free",
+                            avatar: userData.fullName ? userData.fullName.charAt(0).toUpperCase() : 'U',
+                            joined: new Date(userData.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                        };
+                        setUser(uiUser);
+                    } else {
+                        // Token invalid/expired
+                        logout();
+                    }
                 } catch (error) {
-                    console.error("Failed to parse user data:", error);
-                    sessionStorage.removeItem('talentlens_user');
+                    console.error("Auth check failed:", error);
+                    logout();
                 }
             }
             setLoading(false);
@@ -25,53 +50,142 @@ export const AuthProvider = ({ children }) => {
         initAuth();
     }, []);
 
-    const login = (email, password) => {
-        // Mock Login Logic
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                if (email && password) {
-                    const mockUser = {
-                        name: "Alex Johnson",
-                        email: email,
-                        plan: "Free",
-                        avatar: "A"
-                    };
-                    setUser(mockUser);
-                    sessionStorage.setItem('talentlens_user', JSON.stringify(mockUser));
-                    resolve(mockUser);
-                } else {
-                    reject("Invalid credentials");
-                }
-            }, 800);
-        });
+    const login = async (email, password) => {
+        try {
+            const response = await fetch(`${API_URL}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Login failed');
+            }
+
+            const data = await response.json();
+            // Save token
+            sessionStorage.setItem('access_token', data.access_token);
+
+            // Get User Profile immediately to populate state
+            await fetchUserProfile(data.access_token);
+
+            return true;
+        } catch (error) {
+            console.error("Login error:", error);
+            throw error;
+        }
     };
 
-    const register = (name, email, password) => {
-        // Mock Register Logic
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                const newUser = {
-                    name: name,
-                    email: email,
-                    plan: "Free",
-                    avatar: name.charAt(0).toUpperCase()
+    const register = async (fullName, email, password) => {
+        try {
+            const response = await fetch(`${API_URL}/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fullName, email, password })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Registration failed');
+            }
+
+            const data = await response.json();
+            // Auto login after register (if backend returns token, which it does)
+            if (data.access_token) {
+                sessionStorage.setItem('access_token', data.access_token);
+                await fetchUserProfile(data.access_token);
+            }
+
+            return true;
+        } catch (error) {
+            console.error("Registration error:", error);
+            throw error;
+        }
+    };
+
+    // Helper to fetch user profile
+    const fetchUserProfile = async (token) => {
+        try {
+            const response = await fetch(`${API_URL}/me`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const userData = await response.json();
+                // Add derived properties for UI compatibility
+                const uiUser = {
+                    ...userData,
+                    name: userData.fullName, // Map fullName to name for existing UI components
+                    title: userData.title || "Aspiring Professional",
+                    location: userData.location || "Unknown",
+                    plan: "Free", // Default plan
+                    avatar: userData.fullName ? userData.fullName.charAt(0).toUpperCase() : 'U',
+                    joined: new Date(userData.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
                 };
-                setUser(newUser);
-                sessionStorage.setItem('talentlens_user', JSON.stringify(newUser));
-                resolve(newUser);
-            }, 800);
-        });
+                setUser(uiUser);
+            }
+        } catch (error) {
+            console.error("Failed to fetch profile:", error);
+        }
+    }
+
+    const logout = async () => {
+        try {
+            // Optional: Call backend to clear httpOnly cookie
+            const token = sessionStorage.getItem('access_token');
+            await fetch(`${API_URL}/logout`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+        } catch (err) {
+            console.warn("Logout endpoint error", err);
+        } finally {
+            setUser(null);
+            sessionStorage.removeItem('access_token');
+        }
     };
 
-    const logout = () => {
-        setUser(null);
-        sessionStorage.removeItem('talentlens_user');
-    };
+    const updateUser = async (updates) => {
+        try {
+            const token = sessionStorage.getItem('access_token');
+            const apiUpdates = {};
 
-    const updateUser = (updates) => {
-        const updatedUser = { ...user, ...updates };
-        setUser(updatedUser);
-        sessionStorage.setItem('talentlens_user', JSON.stringify(updatedUser));
+            // Map UI fields to Backend fields
+            if (updates.name) apiUpdates.fullName = updates.name;
+            if (updates.email) apiUpdates.email = updates.email;
+            if (updates.title) apiUpdates.title = updates.title;
+            if (updates.location) apiUpdates.location = updates.location;
+
+            const response = await fetch(`${API_URL}/profile`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(apiUpdates)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Update failed');
+            }
+
+            const updatedData = await response.json();
+
+            // Merge response back into UI state, maintaining mappings
+            const uiUser = {
+                ...user,
+                ...updatedData,
+                name: updatedData.fullName || user.name, // Ensure name is synced
+                title: updatedData.title || user.title,
+                location: updatedData.location || user.location
+            };
+            setUser(uiUser);
+            return true;
+        } catch (error) {
+            console.error("Update profile error:", error);
+            throw error;
+        }
     };
 
     const value = {

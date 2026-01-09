@@ -17,3 +17,13 @@ export const LoginSchema = z.object({
 });
 
 export class LoginDto extends createZodDto(LoginSchema) { }
+
+// Define Zod Schema for Update Profile
+export const UpdateProfileSchema = z.object({
+    fullName: z.string().min(2).optional(),
+    email: z.string().email().optional(),
+    title: z.string().optional(),
+    location: z.string().optional(),
+});
+
+export class UpdateProfileDto extends createZodDto(UpdateProfileSchema) { }
