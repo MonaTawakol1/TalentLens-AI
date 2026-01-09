@@ -5,6 +5,7 @@ import FileUpload from '../components/FileUpload';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { FileText, Lightbulb, AlertTriangle, Loader2 } from 'lucide-react';
+import { API_ENDPOINTS } from '../config/api';
 
 const ResumeAnalysis = () => {
     const navigate = useNavigate();
@@ -12,16 +13,42 @@ const ResumeAnalysis = () => {
     const [jobDescription, setJobDescription] = useState('');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-    const handleAnalyze = () => {
+    const handleAnalyze = async () => {
         if (!file) return;
 
         setIsAnalyzing(true);
 
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            if (jobDescription) {
+                formData.append('jobDescription', jobDescription);
+            }
+
+            const token = sessionStorage.getItem('access_token');
+            const response = await fetch(`${API_ENDPOINTS.analysis}/analyze`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                    // Content-Type is set automatically for FormData
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Analysis failed');
+            }
+
+            const data = await response.json();
+            navigate('/results', { state: { analysisResult: data, fileName: file.name } });
+
+        } catch (error) {
+            console.error("Analysis Error:", error);
+            alert("Analysis failed: " + error.message);
+        } finally {
             setIsAnalyzing(false);
-            navigate('/results', { state: { fileName: file.name } });
-        }, 2500);
+        }
     };
 
     return (

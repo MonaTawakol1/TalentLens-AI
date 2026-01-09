@@ -14,8 +14,41 @@ const Register = () => {
     const { register } = useAuth();
     const navigate = useNavigate();
 
+    const [passwordError, setPasswordError] = useState('');
+    const [serverError, setServerError] = useState('');
+
+    const validatePassword = (pwd) => {
+        const minLength = 8;
+        const hasUpperCase = /[A-Z]/.test(pwd);
+        const hasNumber = /\d/.test(pwd);
+        const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(pwd);
+
+        if (pwd.length < minLength) return 'Password must be at least 8 characters long.';
+        if (!hasUpperCase) return 'Password must contain at least one uppercase letter.';
+        if (!hasNumber) return 'Password must contain at least one number.';
+        if (!hasSpecialChar) return 'Password must contain at least one special character.';
+
+        return '';
+    };
+
+    const handlePasswordChange = (e) => {
+        const val = e.target.value;
+        setPassword(val);
+        // Live feedback (optional, or just clear error on type)
+        if (passwordError) setPasswordError(validatePassword(val));
+        if (serverError) setServerError(''); // Clear server error on user interaction
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setServerError('');
+
+        const error = validatePassword(password);
+        if (error) {
+            setPasswordError(error);
+            return;
+        }
+
         setIsLoading(true);
 
         try {
@@ -24,6 +57,7 @@ const Register = () => {
             navigate('/profile');
         } catch (err) {
             console.error(err);
+            setServerError(err.message || "Failed to register. Please try again.");
         } finally {
             setIsLoading(false);
         }
@@ -43,6 +77,20 @@ const Register = () => {
 
                 <Card>
                     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+                        {serverError && (
+                            <div style={{
+                                padding: '0.75rem',
+                                borderRadius: 'var(--radius-md)',
+                                backgroundColor: '#FEF2F2',
+                                color: 'var(--danger)',
+                                border: '1px solid #FECACA',
+                                fontSize: '0.9rem',
+                                textAlign: 'center'
+                            }}>
+                                {serverError}
+                            </div>
+                        )}
 
                         <div>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.9rem' }}>Full Name</label>
@@ -68,7 +116,10 @@ const Register = () => {
                                     required
                                     placeholder="name@example.com"
                                     value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
+                                    onChange={(e) => {
+                                        setEmail(e.target.value);
+                                        if (serverError) setServerError('');
+                                    }}
                                     style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.8rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', outline: 'none' }}
                                 />
                             </div>
@@ -83,10 +134,19 @@ const Register = () => {
                                     required
                                     placeholder="Create a strong password"
                                     value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.8rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', outline: 'none' }}
+                                    onChange={handlePasswordChange}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem 1rem 0.75rem 2.8rem',
+                                        border: `1px solid ${passwordError ? 'var(--danger)' : 'var(--border)'}`,
+                                        borderRadius: 'var(--radius-md)',
+                                        outline: 'none'
+                                    }}
                                 />
                             </div>
+                            {passwordError && (
+                                <p style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: '0.5rem' }}>{passwordError}</p>
+                            )}
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>

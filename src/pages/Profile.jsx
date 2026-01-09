@@ -6,6 +6,7 @@ import { User, Mail, Briefcase, Clock, FileText, ChevronRight, Download, Trash2,
 import { Link, useNavigate } from 'react-router-dom';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAuth } from '../context/AuthContext';
+import { API_ENDPOINTS } from '../config/api';
 
 const Profile = () => {
     const { user: authUser, updateUser } = useAuth();
@@ -16,9 +17,9 @@ const Profile = () => {
         name: "Guest User",
         email: "guest@example.com",
         title: "Aspiring Professional",
-        location: "Unknown",
+        location: "iTi",
         joined: "Just now",
-        plan: "Free"
+        plan: "Premium"
     });
 
     useEffect(() => {
@@ -29,35 +30,63 @@ const Profile = () => {
                 email: authUser.email || prev.email,
                 plan: authUser.plan || prev.plan,
                 title: authUser.title || prev.title,
-                location: authUser.location || prev.location
+                location: authUser.location || prev.location,
+                joined: authUser.joined || prev.joined // Update joined date
             }));
         }
     }, [authUser]);
 
-    const handleSaveProfile = () => {
-        updateUser({
-            name: user.name,
-            title: user.title,
-            location: user.location
-        });
-        setIsEditing(false);
+    const handleSaveProfile = async () => {
+        try {
+            await updateUser({
+                name: user.name,
+                email: user.email, // Added email to updates
+                title: user.title,
+                location: user.location
+            });
+            setIsEditing(false);
+        } catch (error) {
+            alert("Failed to update profile: " + error.message);
+        }
     };
 
-    // Mock History Data
-    const [history, setHistory] = useState([
-        { id: 1, date: "2024-05-12", title: "Product Manager Resume", score: 78, type: "PDF" },
-        { id: 2, date: "2024-04-28", title: "Tech Lead Resume", score: 92, type: "DOCX" },
-        { id: 3, date: "2024-04-10", title: "General Resume V2", score: 65, type: "PDF" },
-        { id: 4, date: "2024-03-15", title: "Old Resume", score: 45, type: "PDF" },
-    ]);
+    const [history, setHistory] = useState([]);
 
-    const chartData = [
-        { name: 'Mar', score: 45 },
-        { name: 'Apr', score: 65 },
-        { name: 'Apr', score: 92 },
-        { name: 'May', score: 78 },
-        { name: 'Jun', score: 85 }, // Simulated projection
-    ];
+    useEffect(() => {
+        const fetchHistory = async () => {
+            try {
+                const token = sessionStorage.getItem('access_token');
+                const response = await fetch(`${API_ENDPOINTS.analysis}/history`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    // Map Backend Data to UI Format
+                    const mappedHistory = data.map(item => ({
+                        id: item.id,
+                        date: new Date(item.createdAt).toLocaleDateString(),
+                        title: item.fileName || "Resume Analysis",
+                        score: item.score,
+                        type: "PDF"
+                    }));
+                    setHistory(mappedHistory);
+                }
+            } catch (error) {
+                console.error("Failed to fetch history:", error);
+            }
+        };
+
+        if (authUser) {
+            fetchHistory();
+        }
+    }, [authUser]);
+
+    // Create chart data with better labels
+    const chartData = history.map((h, index) => ({
+        name: `#${history.length - index}`,
+        score: h.score,
+        fileName: h.title
+    })).reverse(); // Show oldest to newest
 
     const getScoreStyle = (score) => {
         if (score >= 90) return { color: '#059669', backgroundColor: '#D1FAE5', border: '1px solid #10B981' };
@@ -66,9 +95,24 @@ const Profile = () => {
         return { color: '#E11D48', backgroundColor: '#FFE4E6', border: '1px solid #EF4444' };
     };
 
-    const handleDelete = (id) => {
+    const handleDelete = async (id) => {
         if (confirm("Are you sure you want to delete this analysis?")) {
-            setHistory(history.filter(item => item.id !== id));
+            try {
+                const token = sessionStorage.getItem('access_token');
+                const response = await fetch(`${API_ENDPOINTS.analysis}/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    setHistory(history.filter(item => item.id !== id));
+                } else {
+                    alert('Failed to delete analysis');
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert('Failed to delete analysis');
+            }
         }
     };
 
@@ -138,7 +182,15 @@ const Profile = () => {
 
                         <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--text-main)' }}>
-                                <Mail size={18} color="var(--text-muted)" /> {user.email}
+                                <Mail size={18} color="var(--text-muted)" />
+                                {isEditing ? (
+                                    <input
+                                        type="email"
+                                        value={user.email}
+                                        onChange={(e) => setUser({ ...user, email: e.target.value })}
+                                        style={{ flex: 1, padding: '0.25rem', border: '1px solid var(--border)', borderRadius: '4px' }}
+                                    />
+                                ) : user.email}
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--text-main)' }}>
                                 <Briefcase size={18} color="var(--text-muted)" />
@@ -185,14 +237,43 @@ const Profile = () => {
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} />
                                     <YAxis hide domain={[0, 100]} />
-                                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        formatter={(value, name, props) => [value, 'Score']}
+                                        labelFormatter={(label, payload) => {
+                                            if (payload && payload[0]) {
+                                                return payload[0].payload.fileName || label;
+                                            }
+                                            return label;
+                                        }}
+                                    />
                                     <Area type="monotone" dataKey="score" stroke="var(--accent)" strokeWidth={3} fillOpacity={1} fill="url(#colorScore)" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '1rem' }}>
-                            Your average score has increased by <span style={{ color: 'var(--success)', fontWeight: 600 }}>+42%</span> since joined.
-                        </p>
+                        {history.length >= 2 ? (
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '1rem' }}>
+                                {(() => {
+                                    const scores = history.map(h => h.score);
+                                    const firstScore = scores[scores.length - 1]; // Oldest
+                                    const lastScore = scores[0]; // Newest
+                                    const change = lastScore - firstScore;
+                                    const changePercent = firstScore > 0 ? Math.round((change / firstScore) * 100) : 0;
+
+                                    if (change > 0) {
+                                        return <>Your score has improved by <span style={{ color: 'var(--success)', fontWeight: 600 }}>+{changePercent}%</span> since your first analysis!</>;
+                                    } else if (change < 0) {
+                                        return <>Your score decreased by <span style={{ color: 'var(--danger)', fontWeight: 600 }}>{changePercent}%</span>. Keep improving!</>;
+                                    } else {
+                                        return <>Your score is consistent. Keep up the good work!</>;
+                                    }
+                                })()}
+                            </p>
+                        ) : (
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '1rem' }}>
+                                Upload more resumes to see your progress over time.
+                            </p>
+                        )}
                     </Card>
                 </div>
 

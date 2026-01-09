@@ -12,6 +12,7 @@ import Pricing from './pages/Pricing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -29,9 +30,21 @@ const App = () => {
         <Layout>
           <Routes>
             <Route path="/" element={<Landing />} />
-            <Route path="/analyze" element={<ResumeAnalysis />} />
-            <Route path="/results" element={<Results />} />
-            <Route path="/profile" element={<Profile />} />
+            <Route path="/analyze" element={
+              <ProtectedRoute>
+                <ResumeAnalysis />
+              </ProtectedRoute>
+            } />
+            <Route path="/results" element={
+              <ProtectedRoute>
+                <Results />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />

@@ -23,7 +23,7 @@ const Login = () => {
             await login(email, password);
             navigate('/profile'); // Redirect to profile on success
         } catch (err) {
-            setError('Invalid email or password. Try standard mock values.');
+            setError('Invalid email or password.');
         } finally {
             setIsLoading(false);
         }

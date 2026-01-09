@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { CheckCircle, Zap, TrendingUp, Shield, BrainCircuit, Star, BarChart3, Users } from 'lucide-react';
+import { CheckCircle, Zap, TrendingUp, BrainCircuit, Star, BarChart3, Users } from 'lucide-react';
 
 const Landing = () => {
     const { scrollY } = useScroll();
