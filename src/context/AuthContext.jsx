@@ -13,7 +13,27 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const initAuth = async () => {
-            const token = sessionStorage.getItem('access_token');
+            let token = sessionStorage.getItem('access_token');
+
+            // If no token, try to refresh
+            if (!token) {
+                try {
+                    // Try to refresh token (uses httpOnly cookie)
+                    const refreshResponse = await fetch(`${API_URL}/refresh`, {
+                        method: 'POST',
+                    });
+
+                    if (refreshResponse.ok) {
+                        const data = await refreshResponse.json();
+                        token = data.access_token;
+                        sessionStorage.setItem('access_token', token);
+                    }
+                } catch (err) {
+                    // Silent fail on refresh
+                    console.log("No active session found");
+                }
+            }
+
             if (token) {
                 try {
                     // Verify token and get user details
@@ -37,7 +57,8 @@ export const AuthProvider = ({ children }) => {
                         };
                         setUser(uiUser);
                     } else {
-                        // Token invalid/expired
+                        // Token invalid/expired and refresh failed/not tried in this block (but we could retry refresh here too if we wanted robust interceptors)
+                        // For now, simpler logic: if ME call fails, clear everything
                         logout();
                     }
                 } catch (error) {

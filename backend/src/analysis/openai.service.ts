@@ -143,13 +143,21 @@ IMPORTANT: Return ONLY valid JSON. No markdown, no code blocks, no explanations.
         }
     }
 
+<<<<<<< Updated upstream
     async generateJobDescription(resumeText: string): Promise<{ jobDescription: string; suggestedTitle: string }> {
         const prompt = `
 Based on the following resume, generate a realistic and suitable job description that would be a perfect match for this candidate.
+=======
+    async generateCoverLetter(resumeText: string, jobDescription: string) {
+        const prompt = `
+You are an expert Career Coach and Professional Resume Writer.
+Write a compelling, professional Cover Letter based on the candidate's resume and the job description.
+>>>>>>> Stashed changes
 
 Resume Content:
 "${resumeText.substring(0, 3000)}"
 
+<<<<<<< Updated upstream
 Generate a job description that:
 1. Matches the candidate's experience level
 2. Aligns with their skills and background
@@ -163,6 +171,24 @@ Return ONLY valid JSON in this format:
 }
 
 IMPORTANT: Return ONLY valid JSON. No markdown, no code blocks, no explanations.
+=======
+Job Description:
+"${jobDescription.substring(0, 2000)}"
+
+Guidelines:
+1. Tone: Professional, enthusiastic, and confident.
+2. Structure:
+   - Header (Placeholders for Name/Contact)
+   - Salutation (Professional)
+   - Opening: Hook the reader, mention the specific role.
+   - Body Paragraph 1: Highlight relevant experience matching the job.
+   - Body Paragraph 2: Showcase soft skills and culture fit.
+   - Closing: Call to action (interview request).
+   - Sign-off.
+3. Content: specific achievements from the resume that match the job requirements. Do NOT invent facts.
+
+Output: Return ONLY the cover letter text in Markdown format. No explanations.
+>>>>>>> Stashed changes
 `;
 
         try {
@@ -172,6 +198,7 @@ IMPORTANT: Return ONLY valid JSON. No markdown, no code blocks, no explanations.
                 temperature: 0.7,
             });
 
+<<<<<<< Updated upstream
             const content = completion.choices[0].message.content;
             let cleanContent = content.trim();
             if (cleanContent.startsWith('```json')) cleanContent = cleanContent.slice(7);
@@ -226,6 +253,11 @@ IMPORTANT: Return ONLY valid JSON. No markdown, no code blocks, no explanations.
             return JSON.parse(cleanContent.trim());
         } catch (error) {
             console.error('OpenAI Generate Cover Letter Error:', error);
+=======
+            return completion.choices[0].message.content;
+        } catch (error) {
+            console.error('OpenAI Cover Letter Error:', error);
+>>>>>>> Stashed changes
             throw new InternalServerErrorException('Failed to generate cover letter');
         }
     }

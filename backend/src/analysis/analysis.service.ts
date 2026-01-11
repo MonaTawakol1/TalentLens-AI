@@ -100,6 +100,7 @@ export class AnalysisService {
 
         return { message: 'Analysis deleted successfully' };
     }
+<<<<<<< Updated upstream
 
     async getAnalysisById(userId: string, analysisId: string) {
         const analysis = await this.prisma.analysis.findFirst({
@@ -222,4 +223,12 @@ export class AnalysisService {
             improvement
         };
     }
+=======
+    async generateCoverLetter(userId: string, resumeText: string, jobDescription: string) {
+        if (!resumeText || !jobDescription) {
+            throw new BadRequestException('Resume text and Job Description are required');
+        }
+        return this.openAi.generateCoverLetter(resumeText, jobDescription);
+    }
+>>>>>>> Stashed changes
 }

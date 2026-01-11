@@ -40,6 +40,7 @@ export class AnalysisController {
         return this.analysisService.deleteAnalysis(userId, analysisId);
     }
 
+<<<<<<< Updated upstream
     @Throttle({ default: { limit: 10, ttl: 3600000 } })
     @Post('generate-job-description')
     @UseInterceptors(FileInterceptor('file'))
@@ -80,5 +81,14 @@ export class AnalysisController {
         @Param('id') analysisId: string
     ) {
         return this.analysisService.getAnalysisById(userId, analysisId);
+=======
+    @Post('cover-letter')
+    @HttpCode(HttpStatus.OK)
+    async generateCoverLetter(
+        @GetCurrentUserId() userId: string,
+        @Body() body: { resumeText: string; jobDescription: string }
+    ) {
+        return this.analysisService.generateCoverLetter(userId, body.resumeText, body.jobDescription);
+>>>>>>> Stashed changes
     }
 }
