@@ -16,11 +16,13 @@ import { Response, Request } from 'express';
 import { RtGuard } from '../common/guards'; // We'll need to export this
 import { GetCurrentUser, GetCurrentUserId } from '../common/decorators';
 import { AtGuard } from '../common/guards';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
     constructor(private authService: AuthService) { }
 
+    @Throttle({ default: { limit: 5, ttl: 900000 } })
     @Post('register')
     @HttpCode(HttpStatus.CREATED)
     async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
@@ -29,6 +31,7 @@ export class AuthController {
         return { access_token: tokens.access_token };
     }
 
+    @Throttle({ default: { limit: 5, ttl: 900000 } })
     @Post('login')
     @HttpCode(HttpStatus.OK)
     async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {

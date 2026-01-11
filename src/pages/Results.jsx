@@ -5,7 +5,9 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Responsi
 import Button from '../components/Button';
 import Card from '../components/Card';
 import ProgressBar from '../components/ProgressBar';
-import { Download, RefreshCw, Check, X as XIcon, ChevronRight, ArrowRight, ShieldCheck, AlertTriangle, Lightbulb, List, Layers, Star, Target } from 'lucide-react';
+import { Download, RefreshCw, Check, X as XIcon, ChevronRight, ArrowRight, ShieldCheck, AlertTriangle, Lightbulb, List, Layers, Star, Target, FileEdit, Copy, Loader2 } from 'lucide-react';
+import { authenticatedFetch } from '../utils/apiUtils';
+import { API_ENDPOINTS } from '../config/api';
 
 const Results = () => {
     const location = useLocation();
@@ -15,60 +17,106 @@ const Results = () => {
     const [isPrinting, setIsPrinting] = useState(false);
     const [error, setError] = useState(null);
 
+    // Cover Letter states
+    const [coverLetter, setCoverLetter] = useState(null);
+    const [isGeneratingCover, setIsGeneratingCover] = useState(false);
+    const [copied, setCopied] = useState(false);
+    const [coverError, setCoverError] = useState(null);
+
     useEffect(() => {
         // Get data from navigation state (passed from ResumeAnalysis page)
         if (location.state?.analysisResult) {
             const result = location.state.analysisResult;
-            // Transform the feedback data to match the UI structure
-            const transformedData = {
-                overallScore: result.overallScore || result.score || 0,
-                atsScore: result.atsScore || 75,
-                jobMatch: result.jobMatch || 60,
-                summary: result.summary || result.feedback?.summary || "Analysis complete.",
-                topPriority: result.topPriority || result.feedback?.improvements?.[0] || "Review the detailed feedback below.",
 
-                sectionReviews: result.sectionReviews || [
-                    {
-                        name: "Overall Assessment",
-                        score: result.overallScore || result.score || 70,
-                        strengths: result.feedback?.strengths || ["Resume uploaded successfully"],
-                        weaknesses: result.feedback?.weaknesses || ["Review detailed analysis"],
-                        missing: [],
-                        suggestions: result.feedback?.improvements || ["See action plan"]
-                    }
-                ],
+            // Check if this is from database (has feedback as Json) or fresh analysis
+            const isFromDatabase = result.feedback && typeof result.feedback === 'object';
 
-                atsCheck: result.atsCheck || {
-                    missingKeywords: [],
-                    genericWords: [],
-                    actionableSteps: result.feedback?.improvements || []
-                },
+            let transformedData;
 
-                skillGap: result.skillGap || {
-                    radarData: [
-                        { subject: 'Technical', A: 70, B: 100, fullMark: 100 },
-                        { subject: 'Leadership', A: 60, B: 100, fullMark: 100 },
-                        { subject: 'Communication', A: 75, B: 100, fullMark: 100 },
-                        { subject: 'Analytical', A: 65, B: 100, fullMark: 100 },
-                        { subject: 'Domain', A: 70, B: 100, fullMark: 100 }
+            if (isFromDatabase) {
+                // Data from database - feedback is a Json object
+                const feedback = result.feedback;
+                transformedData = {
+                    overallScore: result.score || 0,
+                    atsScore: feedback.atsScore || 75,
+                    jobMatch: feedback.jobMatch || 60,
+                    summary: feedback.summary || "Analysis complete.",
+                    detectedRole: feedback.detectedRole, // Map detectedRole from DB feedback
+                    topPriority: feedback.topPriority || feedback.improvements?.[0] || "Review the detailed feedback below.",
+
+                    sectionReviews: feedback.sectionReviews || [],
+                    atsCheck: feedback.atsCheck || {
+                        missingKeywords: [],
+                        genericWords: [],
+                        actionableSteps: []
+                    },
+                    skillGap: feedback.skillGap || {
+                        radarData: [],
+                        barData: []
+                    },
+                    actionPlan: feedback.actionPlan || {
+                        high: [],
+                        medium: [],
+                        optional: []
+                    },
+                    improvements: Array.isArray(feedback.improvements)
+                        ? feedback.improvements
+                        : []
+                };
+            } else {
+                // Fresh analysis - direct structure
+                transformedData = {
+                    overallScore: result.overallScore || result.score || 0,
+                    atsScore: result.atsScore || 75,
+                    jobMatch: result.jobMatch || 60,
+                    summary: result.summary || result.feedback?.summary || "Analysis complete.",
+                    detectedRole: result.detectedRole || result.feedback?.detectedRole, // Map detectedRole from fresh analysis
+                    topPriority: result.topPriority || result.feedback?.improvements?.[0] || "Review the detailed feedback below.",
+
+                    sectionReviews: result.sectionReviews || [
+                        {
+                            name: "Overall Assessment",
+                            score: result.overallScore || result.score || 70,
+                            strengths: result.feedback?.strengths || ["Resume uploaded successfully"],
+                            weaknesses: result.feedback?.weaknesses || ["Review detailed analysis"],
+                            missing: [],
+                            suggestions: result.feedback?.improvements || ["See action plan"]
+                        }
                     ],
-                    barData: []
-                },
 
-                actionPlan: result.actionPlan || {
-                    high: result.feedback?.improvements?.slice(0, 2) || ["Review your resume"],
-                    medium: result.feedback?.improvements?.slice(2, 4) || [],
-                    optional: []
-                },
+                    atsCheck: result.atsCheck || {
+                        missingKeywords: [],
+                        genericWords: [],
+                        actionableSteps: result.feedback?.improvements || []
+                    },
 
-                improvements: result.improvements || [
-                    {
-                        section: "Professional Summary",
-                        before: "Generic professional summary",
-                        after: "See the AI suggestions above for personalized improvements"
-                    }
-                ]
-            };
+                    skillGap: result.skillGap || {
+                        radarData: [
+                            { subject: 'Technical', A: 70, B: 100, fullMark: 100 },
+                            { subject: 'Leadership', A: 60, B: 100, fullMark: 100 },
+                            { subject: 'Communication', A: 75, B: 100, fullMark: 100 },
+                            { subject: 'Analytical', A: 65, B: 100, fullMark: 100 },
+                            { subject: 'Domain', A: 70, B: 100, fullMark: 100 }
+                        ],
+                        barData: []
+                    },
+
+                    actionPlan: result.actionPlan || {
+                        high: result.feedback?.improvements?.slice(0, 2) || ["Review your resume"],
+                        medium: result.feedback?.improvements?.slice(2, 4) || [],
+                        optional: []
+                    },
+
+                    improvements: result.improvements || [
+                        {
+                            section: "Professional Summary",
+                            before: "Generic professional summary",
+                            after: "See the AI suggestions above for personalized improvements"
+                        }
+                    ]
+                };
+            }
+
             setData(transformedData);
         } else {
             // No data passed, redirect to analyze page
@@ -106,14 +154,96 @@ const Results = () => {
         { id: 'sections', label: 'Section Review' },
         { id: 'ats', label: 'ATS Check' },
         { id: 'plan', label: 'Action Plan' },
+        { id: 'cover', label: 'Cover Letter' },
     ];
 
-    const handlePrint = () => {
+    const handleExportPDF = () => {
         setIsPrinting(true);
+        // Set all tabs to show for printing
+        const previousTab = activeTab;
+        setActiveTab('overview'); // Start with overview
+
         setTimeout(() => {
             window.print();
             setIsPrinting(false);
+            setActiveTab(previousTab); // Restore previous tab
         }, 500);
+    };
+
+    // Generate Cover Letter function
+    const handleGenerateCoverLetter = async () => {
+        // We need the original file - check if it's in location state
+        const originalFile = location.state?.originalFile;
+        const jobDesc = location.state?.jobDescription;
+
+        if (!originalFile) {
+            setCoverError('Original resume file not available. Please go back and upload again.');
+            return;
+        }
+
+        setIsGeneratingCover(true);
+        setCoverError(null);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', originalFile);
+            if (jobDesc) {
+                formData.append('jobDescription', jobDesc);
+            }
+
+            const response = await authenticatedFetch(`${API_ENDPOINTS.analysis}/generate-cover-letter`, {
+                method: 'POST',
+                headers: {}, // Let browser set boundary
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to generate cover letter');
+            }
+
+            const result = await response.json();
+            setCoverLetter(result.coverLetter);
+        } catch (err) {
+            console.error("Generate Cover Letter Error:", err);
+            setCoverError(err.message);
+        } finally {
+            setIsGeneratingCover(false);
+        }
+    };
+
+    // Copy cover letter to clipboard
+    const handleCopyCoverLetter = () => {
+        navigator.clipboard.writeText(coverLetter);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    // Generate LinkedIn Smart Search Link
+    const handleFindJobs = () => {
+        let query = "";
+
+        // 1. Use Job Description if available (Most accurate)
+        if (location.state?.jobDescription) {
+            // Extract first 50 chars as keywords to avoid too long URL
+            query = location.state.jobDescription.split(' ').slice(0, 5).join(' ');
+        }
+        // 2. Use AI Detected Role (Smartest Option)
+        else if (data?.detectedRole) {
+            query = data.detectedRole;
+        }
+        // 3. Use Filename (often contains role, e.g. "Frontend_Dev_CV.pdf")
+        else if (location.state?.fileName) {
+            // Remove extension and special chars
+            query = location.state.fileName.replace(/\.(pdf|docx|doc)$/i, '').replace(/[_-]/g, ' ');
+        }
+        // 4. Fallback
+        else {
+            query = "Software Engineer";
+        }
+
+        const url = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(query)}`;
+        window.open(url, '_blank');
     };
 
     return (
@@ -136,8 +266,11 @@ const Results = () => {
                     <p style={{ color: 'var(--text-muted)' }}>File: <span style={{ fontWeight: 600 }}>{location.state?.fileName || 'Uploaded Resume'}</span></p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                    <Button variant="outline" onClick={handlePrint}>
-                        <Download size={18} /> Download Report
+                    <Button variant="outline" onClick={handleFindJobs} style={{ borderColor: '#0A66C2', color: '#0A66C2' }}>
+                        Search LinkedIn 🚀
+                    </Button>
+                    <Button variant="outline" onClick={handleExportPDF} disabled={isPrinting}>
+                        {isPrinting ? <><Loader2 size={18} className="animate-spin" /> Exporting...</> : <><Download size={18} /> Download PDF</>}
                     </Button>
                     <Link to="/analyze">
                         <Button variant="primary">
@@ -173,7 +306,7 @@ const Results = () => {
             )}
 
             {/* Content Area */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: isPrinting ? '3rem' : '0' }}>
+            <div id="pdf-report-content" style={{ display: 'flex', flexDirection: 'column', gap: isPrinting ? '3rem' : '0' }}>
 
                 {/* OVERVIEW TAB */}
                 {(activeTab === 'overview' || isPrinting) && (
@@ -473,6 +606,120 @@ const Results = () => {
                                 </Card>
                             )}
                         </div>
+                    </motion.div>
+                )}
+
+                {/* COVER LETTER TAB */}
+                {(activeTab === 'cover' || isPrinting) && (
+                    <motion.div
+                        key="cover"
+                        initial={!isPrinting ? { opacity: 0, y: 10 } : {}}
+                        animate={!isPrinting ? { opacity: 1, y: 0 } : {}}
+                        exit={!isPrinting ? { opacity: 0, y: -10 } : {}}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+                            <div>
+                                <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <FileEdit color="var(--accent)" /> AI Cover Letter Generator
+                                </h2>
+                                <p style={{ color: 'var(--text-muted)' }}>Generate a personalized cover letter based on your resume</p>
+                            </div>
+                        </div>
+
+                        {!coverLetter ? (
+                            <Card style={{ textAlign: 'center', padding: '3rem' }}>
+                                <div style={{
+                                    width: '80px',
+                                    height: '80px',
+                                    borderRadius: '50%',
+                                    background: 'var(--accent-gradient)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    margin: '0 auto 1.5rem'
+                                }}>
+                                    <FileEdit size={36} color="white" />
+                                </div>
+                                <h3 style={{ marginBottom: '0.75rem' }}>Ready to Create Your Cover Letter?</h3>
+                                <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', maxWidth: '500px', margin: '0 auto 2rem' }}>
+                                    Our AI will analyze your resume and create a professional, personalized cover letter that highlights your key strengths and achievements.
+                                </p>
+
+                                {coverError && (
+                                    <div style={{
+                                        backgroundColor: '#FEF2F2',
+                                        border: '1px solid #FECACA',
+                                        borderRadius: 'var(--radius-md)',
+                                        padding: '1rem',
+                                        marginBottom: '1.5rem',
+                                        color: '#991B1B',
+                                        textAlign: 'left'
+                                    }}>
+                                        <strong>Error:</strong> {coverError}
+                                    </div>
+                                )}
+
+                                <Button
+                                    variant="primary"
+                                    size="lg"
+                                    disabled={isGeneratingCover}
+                                    onClick={handleGenerateCoverLetter}
+                                >
+                                    {isGeneratingCover ? (
+                                        <><Loader2 className="animate-spin" /> Generating...</>
+                                    ) : (
+                                        <><FileEdit size={18} /> Generate Cover Letter</>
+                                    )}
+                                </Button>
+                                <style>{`
+                                    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                                    .animate-spin { animation: spin 1s linear infinite; }
+                                `}</style>
+                            </Card>
+                        ) : (
+                            <Card>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Check color="var(--success)" /> Your Cover Letter
+                                    </h3>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setCoverLetter(null)}
+                                        >
+                                            Regenerate
+                                        </Button>
+                                        <Button
+                                            variant="primary"
+                                            size="sm"
+                                            onClick={handleCopyCoverLetter}
+                                        >
+                                            {copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy</>}
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div style={{
+                                    backgroundColor: '#F8FAFC',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: 'var(--radius-md)',
+                                    padding: '2rem',
+                                    whiteSpace: 'pre-wrap',
+                                    lineHeight: '1.8',
+                                    fontSize: '1rem',
+                                    color: 'var(--text-main)'
+                                }}>
+                                    {coverLetter}
+                                </div>
+
+                                <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#F0FDFA', borderRadius: 'var(--radius-md)', border: '1px solid #CCFBF1' }}>
+                                    <p style={{ fontSize: '0.9rem', color: 'var(--accent-hover)' }}>
+                                        💡 <strong>Tip:</strong> Customize this cover letter with specific details about the company and position before sending.
+                                    </p>
+                                </div>
+                            </Card>
+                        )}
                     </motion.div>
                 )}
 

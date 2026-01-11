@@ -25,7 +25,7 @@ model User {
 model Analysis {
   id             String   @id @default(uuid())
   userId         String
-  user           User     @relation(fields: [userId], references: [id])
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   fileName       String?
   resumeText     String   @db.Text
   jobDescription String?  @db.Text
