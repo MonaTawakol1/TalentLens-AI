@@ -1,20 +1,6 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
-<<<<<<< Updated upstream
-=======
-// Lazy load pages
-const Landing = React.lazy(() => import('./pages/Landing'));
-const ResumeAnalysis = React.lazy(() => import('./pages/ResumeAnalysis'));
-const Results = React.lazy(() => import('./pages/Results'));
-const Profile = React.lazy(() => import('./pages/Profile'));
-const About = React.lazy(() => import('./pages/About'));
-const Contact = React.lazy(() => import('./pages/Contact'));
-const Privacy = React.lazy(() => import('./pages/Privacy'));
-const Pricing = React.lazy(() => import('./pages/Pricing'));
-const Login = React.lazy(() => import('./pages/Login'));
-const Register = React.lazy(() => import('./pages/Register'));
->>>>>>> Stashed changes
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -73,15 +59,7 @@ const App = () => {
       <Router>
         <ScrollToTop />
         <Layout>
-<<<<<<< Updated upstream
           <Suspense fallback={<PageLoader />}>
-=======
-          <React.Suspense fallback={
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-              Loading...
-            </div>
-          }>
->>>>>>> Stashed changes
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/analyze" element={
@@ -99,14 +77,11 @@ const App = () => {
                   <Profile />
                 </ProtectedRoute>
               } />
-<<<<<<< Updated upstream
               <Route path="/compare" element={
                 <ProtectedRoute>
                   <Compare />
                 </ProtectedRoute>
               } />
-=======
->>>>>>> Stashed changes
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
@@ -114,11 +89,7 @@ const App = () => {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
             </Routes>
-<<<<<<< Updated upstream
           </Suspense>
-=======
-          </React.Suspense>
->>>>>>> Stashed changes
         </Layout>
       </Router>
     </AuthProvider>

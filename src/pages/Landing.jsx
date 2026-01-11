@@ -140,8 +140,8 @@ const Landing = () => {
                         transition={{ delay: 1 }}
                         style={{ marginTop: '3rem', display: 'flex', gap: '2rem', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CheckCircle size={16} color="var(--success)" /> 100% Free Analysis</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CheckCircle size={16} color="var(--success)" /> No Sign-up Required</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CheckCircle size={16} color="var(--success)" /> Free & Premium Plans</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CheckCircle size={16} color="var(--success)" /> Quick Sign-up</div>
                     </motion.div>
                 </div>
             </section>
@@ -234,7 +234,7 @@ const Landing = () => {
                             </p>
                             <Link to="/analyze">
                                 <Button variant="accent" size="lg" style={{ boxShadow: '0 0 30px rgba(14,165,233,0.5)' }}>
-                                    Start Free Analysis
+                                    Start Analysis
                                 </Button>
                             </Link>
                         </div>
